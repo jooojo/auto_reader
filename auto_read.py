@@ -33,7 +33,7 @@ def answer(
         help=
         "The tsv file of papers infomation with columns `title` and `abstract`"
     ),
-    outfile: str = typer.Argument(...),
+    outfile: typer.FileTextWrite = typer.Argument(...),
     model: str = typer.Option("google/flan-t5-base"),
     batch_size: int = typer.Option(64, "--batch_size", "-bs")):
     with Progress(
@@ -53,9 +53,8 @@ def answer(
                             total=inputs.size,
                             description="Reading...")
     ]
-    with open(outfile, 'w') as fout:
-        fout.write(f"{question}\n")
-        fout.write("\n".join(answers))
+    outfile.write(f"{question}\n")
+    outfile.write("\n".join(answers))
 
 
 if __name__ == "__main__":
