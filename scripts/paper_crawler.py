@@ -9,13 +9,17 @@ from tqdm import tqdm
 
 # parse paper info from paper url
 def parse_paper_info(url):
-    with urlopen(url) as f:
-        soup = BeautifulSoup(f.read(), "html.parser")
-        title = soup.find("div", id="papertitle").get_text().strip()
-        authors = soup.find("div", id="authors").get_text().strip()
-        abstract = soup.find("div", id="abstract").get_text().strip()
-        link = urllib.parse.urljoin(url, soup.find("a", string="pdf")["href"])
-        return "\t".join([title, authors, link, abstract])
+    try:
+        with urlopen(url) as f:
+            soup = BeautifulSoup(f.read(), "html.parser")
+            title = soup.find("div", id="papertitle").get_text().strip()
+            authors = soup.find("div", id="authors").get_text().strip()
+            abstract = soup.find("div", id="abstract").get_text().strip()
+            link = urllib.parse.urljoin(url, soup.find("a", string="pdf")["href"])
+            return "\t".join([title, authors, link, abstract])
+    except:
+        print(url)
+        return None
 
 
 # parse paper lists from conference index page
@@ -104,6 +108,7 @@ def crawler(
             before18 = False
         paper_list = list(get_cvf_paper_list(conference_index, before18))
 
+        paper_list = paper_list[155:158]
         with multiprocessing.Pool(processes=num_workers) as pool:
             results = pool.imap_unordered(parse_paper_info, paper_list)
             for result in tqdm(results, total=len(paper_list)):
