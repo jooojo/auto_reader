@@ -1,3 +1,4 @@
+import multiprocessing
 import urllib.parse
 from urllib.request import urlopen
 
@@ -19,20 +20,22 @@ def parse_paper_info(url):
 
 # parse paper lists from conference index page
 def parse_paper_url(url):
+    papers = []
     with urlopen(url) as f:
         soup = BeautifulSoup(f.read(), "html.parser")
         dl_data = soup.find_all("dl")
         data = dl_data[0]
-        for dt in tqdm(data.find_all("dt")):
+        for dt in data.find_all("dt"):
             paper_link = urllib.parse.urljoin(url, dt.find("a")["href"])
-            yield paper_link
+            papers.append(paper_link)
+    return papers
 
 
-def get_cvf_paper_list(index_url, before17=False):
-    if before17:
-        for paper in parse_paper_url(index_url):
-            yield paper
+def get_cvf_paper_list(index_url, before18=False):
+    if before18:
+        return parse_paper_url(index_url)
 
+    paper_list = []
     with urlopen(index_url) as f:
         soup = BeautifulSoup(f.read(), "html.parser")
         dl_data = soup.find("dl")
@@ -40,8 +43,9 @@ def get_cvf_paper_list(index_url, before17=False):
             daily_url = urllib.parse.urljoin(index_url, dd.find("a")["href"])
             if "all" in daily_url:
                 continue
-            for paper in parse_paper_url(daily_url):
-                yield paper
+            else:
+                paper_list.extend(parse_paper_url(daily_url))
+    return paper_list
 
 
 # parse paper lists from conference index page
@@ -89,14 +93,21 @@ app = typer.Typer()
 def crawler(
     confs: str = typer.Argument(..., help="conference list"),
     outfile: typer.FileTextWrite = typer.Argument(...),
-    conf_index_url: str = "https://openaccess.thecvf.com/"
+    conf_index_url: str = "https://openaccess.thecvf.com/",
+    num_workers: int = None
 ):
     for conference in confs.split(","):
         conference_index = f"{conf_index_url}{conference}"
-        conference_list = get_cvf_paper_list(conference_index)
+        if int(conference[-4:]) < 2018:
+            before18 = True
+        else:
+            before18 = False
+        paper_list = list(get_cvf_paper_list(conference_index, before18))
 
-        for i, paper in enumerate(conference_list):
-            outfile.write(f"{parse_paper_info(paper)}\n")
+        with multiprocessing.Pool(processes=num_workers) as pool:
+            results = pool.imap_unordered(parse_paper_info, paper_list)
+            for result in tqdm(results, total=len(paper_list)):
+                outfile.write(f"{result}\n")
 
 
 if __name__ == "__main__":
