@@ -108,7 +108,7 @@ def crawler(
             before18 = False
         paper_list = list(get_cvf_paper_list(conference_index, before18))
 
-        paper_list = paper_list[155:158]
+        paper_list = paper_list
         with multiprocessing.Pool(processes=num_workers) as pool:
             results = pool.imap_unordered(parse_paper_info, paper_list)
             for result in tqdm(results, total=len(paper_list)):
